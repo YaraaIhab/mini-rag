@@ -24,7 +24,7 @@ class ProjectModel(BaseDataModel):
 
     async def create_project(self, project: Project):
         result = await self.collection.insert_one(project.dict(by_alias=True, exclude_unset=True)) # Insert the project data into the collection
-        project._id = result.inserted_id # Set the _id field of the project to the inserted ID
+        project.id = result.inserted_id # Set the _id field of the project to the inserted ID
 
         return project # Return the project with the _id field set
 
