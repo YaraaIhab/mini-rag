@@ -39,7 +39,7 @@ class ChunkModel(BaseDataModel):
         
         return DataChunk(**result) # convert dict result to DataChunk instance and return it
 
-    async def insert_many_chunks(self, chunks: list, batch_size: int=10):
+    async def insert_many_chunks(self, chunks: list, batch_size: int=100):
         """Inserts multiple chunks into the database in batches to avoid overwhelming the database.
         It receives a list of DataChunk instances and a batch size.
         It returns the number of chunks inserted."""
