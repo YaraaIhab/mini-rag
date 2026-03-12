@@ -1,21 +1,16 @@
-from xmlrpc import client
-
-from ..LLMEnums import OpenAIEnum
 from ..LLMInterface import LLMInterface
-from openai import OpenAI
+from ..LLMEnums import CohereEnum, DocumentTypeEnum
+import cohere
 import logging
 
+class CohereProvider(LLMInterface):
 
-class OpenAIProvider(LLMInterface):
-
-    def __init__(self, api_key: str, api_url: str = None,
+    def __init__(self, api_key: str,
                  default_input_max_characters: int = 1000,
                    default_output_max_tokens: int = 1000, 
                    default_temperature: float = 0.1):
                  #default_input_max_charachter is the max number of characters that the provider can handle as input, this is used to truncate the input if it exceeds the limit. This is important to prevent errors and cost.
-        
         self.api_key = api_key
-        self.api_url = api_url
 
         self.default_input_max_characters = default_input_max_characters
         self.default_output_max_tokens = default_output_max_tokens
@@ -26,7 +21,7 @@ class OpenAIProvider(LLMInterface):
         self.embedding_model_id = None
         self.embedding_size = None # 3ashan el vector db byehtag el size 
 
-        self.client = OpenAI(api_key=self.api_key, api_url=self.api_url)
+        self.client = cohere.Client(api_key=self.api_key)
 
         self.logger = logging.getLogger(__name__)
     
@@ -42,7 +37,7 @@ class OpenAIProvider(LLMInterface):
     
     def generate_response(self, prompt: str, chat_history: list = [], max_output_tokens: int = None, temperature: float = None):
         if not self.client:
-            self.logger.error("OpenAI client is not initialized.")
+            self.logger.error("Cohere client is not initialized.")
             return None
         
         if not self.generation_model_id:
@@ -52,43 +47,49 @@ class OpenAIProvider(LLMInterface):
         max_output_tokens = max_output_tokens if max_output_tokens is not None else self.default_output_max_tokens
         temperature = temperature if temperature is not None else self.default_temperature
 
-        chat_history.append(self.construct_prompt(prompt = prompt, role = OpenAIEnum.USER.value))
-        response = self.client.chat.completions.create(
+
+        response = self.client.chat(
             model = self.generation_model_id,
-            messages = chat_history,
-            max_tokens = max_output_tokens,
-            temperature = temperature
+            chat_history = chat_history,
+            message = self.process_text(prompt),
+            temperature = temperature,
+            max_tokens = max_output_tokens
         )
 
-        if not response or not response.choices or len(response.choices) == 0 or not response.choices[0].message or not response.choices[0].message.content:
-            self.logger.error("Error while generating response with OpenAI")
+        if not response or not response.text:
+            self.logger.error("No response received from Cohere API.")
             return None
-        
-        generated_response = response.choices[0].message.content
-        return generated_response
-
-    def embed_text(self, input_text, document_type:str = None):
+        return response.text
+    
+    def embed_text(self, input_text, document_type = None):
         if not self.client:
-                self.logger.error("OpenAI client is not initialized.")
-                return None
+            self.logger.error("Cohere client is not initialized.")
+            return None
         
         if not self.embedding_model_id:
             self.logger.error("Embedding model ID is not set.")
             return None
-        response = client.Embedding.create(
-            model = self.embedding_model_id,
-            input = input_text
-            )
         
-        if not response or response.data or len(response.data) == 0 or not response.data[0].embedding:
-            self.logger.error("Error while embedding text with OpenAI")
+        input_type = CohereEnum.DOCUMENT
+        if document_type == DocumentTypeEnum.QUERY:
+            input_type = CohereEnum.QUERY
+        
+        response = self.client.embed(
+            model = self.embedding_model_id,
+            texts =[self.process_text(input_text)],
+            input_type = input_type,
+            embedding_types =['float']
+            )
+        if not response or not response.embeddings or not response.embeddings.float:
+            self.logger.error("No embedding received from Cohere API.")
             return None
-       
-        embedding = response['data'][0].embedding
+        
+        embedding = response.embeddings.float[0]
         return embedding
-    
+
+
     def construct_prompt(self, prompt: str, role: list):
         return {
             "role": role,
-            "content": self.process_text(prompt)
+            "text": self.process_text(prompt)
         }
