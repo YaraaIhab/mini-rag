@@ -5,7 +5,7 @@ class LLMProviderFactory:
     def __init__(self, config: dict):
         self.config = config
     
-    def create_provider(self, provider:str):
+    def create(self, provider:str):
         if provider == LLMEnum.OPENAI.value:
             return OpenAIProvider(
                 api_key = self.config.OPENAI_API_KEY,
