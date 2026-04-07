@@ -5,5 +5,4 @@ class VectorDBEnum(str, Enum):
 
 class DistanceMethodEnum(str, Enum):
     COSINE = "cosine"
-    EUCLIDEAN = "euclidean"
-    DOT = "dot_product"
+    DOT = "dot"

@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List
+from models.db_schemes import RetrievedDocument
+
 class VectorDBInterface(ABC):
     @abstractmethod  # abstract methods must be implemented by child classes
     def connect(self):
@@ -49,6 +51,6 @@ class VectorDBInterface(ABC):
         pass
 
     @abstractmethod
-    def search_by_vector(self, collection_name: str, vector: list,limit: int):
+    def search_by_vector(self, collection_name: str, vector: list,limit: int) -> List[RetrievedDocument]:
         """Search for similar vectors in a specified collection based on a given query vector. This method should be implemented by the child class to handle the logic for performing a similarity search in the specified collection and returning the top K most similar vectors along with their associated metadata."""
         pass

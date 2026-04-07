@@ -23,4 +23,9 @@ class DataChunk(BaseModel):
                 "unique": False
             }
 
-        ] 
+        ]
+
+class RetrievedDocument(BaseModel):
+    # schema for retrived documents from the db (3ashan matala3sh kol el output el tale3 w atala3 el text wl score bas)
+    text: str
+    score: float

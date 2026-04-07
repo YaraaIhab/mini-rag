@@ -1,6 +1,7 @@
 from qdrant_client import QdrantClient, models
 from ..VectorDBInterface import VectorDBInterface
 from ..VectorDBEnums import DistanceMethodEnum
+from models.db_schemes import RetrievedDocument
 import logging
 from typing import List
 
@@ -13,9 +14,6 @@ class QdrantDBProvider(VectorDBInterface):
 
       if distance_method == DistanceMethodEnum.COSINE.value:
           self.distance_method = models.Distance.COSINE
-
-      elif distance_method == DistanceMethodEnum.EUCLIDEAN.value:
-          self.distance_method = models.Distance.EUCLIDEAN
 
       elif distance_method == DistanceMethodEnum.DOT.value:
           self.distance_method = models.Distance.DOT
@@ -66,6 +64,7 @@ class QdrantDBProvider(VectorDBInterface):
                 collection_name=collection_name,
                 records=[
                     models.Record(
+                        id = [record_id],
                         vector = vector,
                         payload = {"text": text, "metadata": metadata} # data od the record can be stored in the payload field, which is a dictionary that can hold any additional information related to the vector. In this case, we store the original text and any associated metadata in the payload for easy retrieval during search operations.
                     )
@@ -83,7 +82,7 @@ class QdrantDBProvider(VectorDBInterface):
             metadata = [None] * len(texts) # list of None with the same length as texts
         
         if record_ids is None:
-            record_ids = [None] * len(texts) # list of None with the same length as texts
+            record_ids = list(range(0, len(texts))) # generate record ids as a sequence of integers starting from 0
 
         for i in range(0, len(texts), batch_size):
             batch_end = i + batch_size
@@ -95,6 +94,7 @@ class QdrantDBProvider(VectorDBInterface):
 
             batch_record = [
                 models.Record(
+                    id = batch_record_ids[x],
                     vector = batch_vectors[x],
                     payload = {"text": batch_texts[x], "metadata": batch_metadata[x]}
                 )
@@ -112,9 +112,22 @@ class QdrantDBProvider(VectorDBInterface):
     
     def search_by_vector(self, collection_name: str, vector: list, limit: int = 5):
 
-        return self.client.search(
+        results = self.client.search(
             collection_name=collection_name,
             query_vector=vector,
             limit=limit
         )
+
+        if not results or len(results) == 0:
+            return None
+        
+        return [
+            RetrievedDocument(**{
+                "score": result.score,
+                "text": result.payload["text"]
+
+            }) 
+            for result in results
+        ]
+
 
