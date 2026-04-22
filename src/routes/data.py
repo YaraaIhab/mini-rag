@@ -22,7 +22,7 @@ data_router = APIRouter(
 )
 
 @data_router.post("/upload/{project_id}")
-async def upload_data(request: Request, project_id: str, file: UploadFile,
+async def upload_data(request: Request, project_id: int, file: UploadFile,
                       app_settings: Settings = Depends(get_settings)):
     
     project_model = await ProjectModel.create_instance(db_client=request.app.db_client)
@@ -65,7 +65,7 @@ async def upload_data(request: Request, project_id: str, file: UploadFile,
     # Store the assets into the database
     asset_model = await AssetModel.create_instance(db_client=request.app.db_client)
     asset_resource = Asset(
-        asset_project_id = project.id,
+        asset_project_id = project.project_id,
         asset_type = AssetTypeEnum.FILE.value,
         asset_name = file_id,
         asset_size = os.path.getsize(file_path),
@@ -75,13 +75,13 @@ async def upload_data(request: Request, project_id: str, file: UploadFile,
     return JSONResponse(
             content={
                 "signal": ResponseSignal.FILE_UPLOAD_SUCCESS.value,
-                "file_id": str(asset_record.id), # Return the file_id to the client for future reference in processing
+                "file_id": str(asset_record.asset_id), # Return the file_id to the client for future reference in processing
                 #"project_id": str(project._id)
             }
         )
 
 @data_router.post("/process/{project_id}")
-async def process_endpoint(request: Request, project_id: str, process_request: ProcessRequest):
+async def process_endpoint(request: Request, project_id: int, process_request: ProcessRequest):
     """Endpoint to process a file and return the processed chunks. It receives the project_id as a path parameter and the file_id, chunk_size and overlap_size as body parameters. It returns the processed chunks or an error signal if the processing failed."""
     # file_id = process_request.file_id
     chunk_size = process_request.chunk_size
@@ -97,7 +97,7 @@ async def process_endpoint(request: Request, project_id: str, process_request: P
     project_files_ids = {}
 
     if process_request.file_id:
-        asset_record = await asset_model.get_asset_record(asset_project_id=project.id, asset_name=process_request.file_id)
+        asset_record = await asset_model.get_asset_record(asset_project_id=project.project_id, asset_name=process_request.file_id)
         
         if asset_record is None:
             return JSONResponse(
@@ -106,13 +106,13 @@ async def process_endpoint(request: Request, project_id: str, process_request: P
                     "signal": ResponseSignal.FILE_ID_ERROR.value
                 }
             )
-        project_files_ids = {asset_record.id: asset_record.asset_name}
+        project_files_ids = {asset_record.asset_id: asset_record.asset_name}
     else:
         
-        project_assets = await asset_model.get_all_project_assets(asset_project_id=project.id, asset_type=AssetTypeEnum.FILE.value)
+        project_assets = await asset_model.get_all_project_assets(asset_project_id=project.project_id, asset_type=AssetTypeEnum.FILE.value)
         
         project_files_ids = {
-            asset.id: asset.asset_name for asset in project_assets
+            asset.asset_id: asset.asset_name for asset in project_assets
             }
     
     if len(project_files_ids) == 0:
@@ -130,7 +130,7 @@ async def process_endpoint(request: Request, project_id: str, process_request: P
     chunk_model = await ChunkModel.create_instance(db_client=request.app.db_client)
 
     if(do_reset):
-        _ = await chunk_model.delete_chunks_by_project_id(project_id=project.id)
+        _ = await chunk_model.delete_chunks_by_project_id(project_id=project.project_id)
 
     for asset_id, file_id in project_files_ids.items():
         file_content = process_controller.get_file_content(file_id=file_id)
@@ -157,7 +157,7 @@ async def process_endpoint(request: Request, project_id: str, process_request: P
                 chunk_text = chunk.page_content,
                 chunk_metadata = chunk.metadata,
                 chunk_order = i+1,
-                chunk_project_id = project.id,
+                chunk_project_id = project.project_id,
                 chunk_asset_id = asset_id
                 )
             for i,chunk in enumerate(file_chunks) # enumerate returns element and its order

@@ -1,5 +1,3 @@
-from xmlrpc import client
-
 from ..LLMEnums import OpenAIEnum
 from ..LLMInterface import LLMInterface
 from openai import OpenAI
@@ -26,8 +24,10 @@ class OpenAIProvider(LLMInterface):
         self.embedding_model_id = None
         self.embedding_size = None # 3ashan el vector db byehtag el size 
 
-        self.client = OpenAI(api_key=self.api_key,
-                            base_url=self.api_url if self.api_url  and len(self.api_url) else None)
+        if self.api_url and len(self.api_url):
+            self.client = OpenAI(api_key=self.api_key, base_url=self.api_url)
+        else:
+            self.client = OpenAI(api_key=self.api_key)
 
         self.enums = OpenAIEnum
 
@@ -70,28 +70,30 @@ class OpenAIProvider(LLMInterface):
         generated_response = response.choices[0].message.content
         return generated_response
 
-    def embed_text(self, input_text, document_type:str = None):
+    def embed_text(self, input_text, document_type: str = None):
         if not self.client:
-                self.logger.error("OpenAI client is not initialized.")
-                return None
+            self.logger.error("OpenAI client is not initialized.")
+            return None
         
         if not self.embedding_model_id:
             self.logger.error("Embedding model ID is not set.")
             return None
-        response = client.Embedding.create(
-            model = self.embedding_model_id,
-            input = input_text
-            )
-        
-        if not response or response.data or len(response.data) == 0 or not response.data[0].embedding:
+
+        response = self.client.embeddings.create(
+            model=self.embedding_model_id,
+            input=input_text
+        )
+
+        if not response or not response.data or len(response.data) == 0:
             self.logger.error("Error while embedding text with OpenAI")
             return None
-       
-        embedding = response['data'][0].embedding
+
+        embedding = response.data[0].embedding
         return embedding
+          
     
     def construct_prompt(self, prompt: str, role: list):
         return {
             "role": role,
-            "content": self.process_text(prompt)
+            "content": prompt
         }

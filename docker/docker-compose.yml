@@ -17,9 +17,30 @@ services:
       - backend
 
     restart: always
+
+  pgvector:
+    image: pgvector/pgvector:0.8.2-pg17-trixie
+
+    container_name: pgvector
+
+    ports:
+      - "5433:5432"
+    
+    volumes:
+      - pgvector_data:/var/lib/postgresql/data
+
+    environment:
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=minirag_db
+
+    networks:
+      - backend
+
+    restart: always
   
 networks:
   backend:
 
 volumes:
   mongodata:
+  pgvector_data:
