@@ -1,3 +1,4 @@
+from ast import stmt
 from unittest import result
 
 from .BaseDataModel import BaseDataModel
@@ -108,3 +109,18 @@ class ChunkModel(BaseDataModel):
     #   ).skip((page_no - 1) * page_size).limit(page_size).to_list(length=None)
 
     #   return [DataChunk(**chunk) for chunk in records]
+
+    async def get_total_chunks_count_by_project_id(self, project_id: ObjectId):
+        total_count = 0
+        async with self.db_client() as session:
+            count_sql = select(func.count(DataChunk.chunk_id)).where(DataChunk.chunk_project_id == project_id)
+            result = await session.execute(count_sql)
+            total_count = result.scalar()
+        
+        return total_count
+
+        # """Returns the total number of chunks associated with a project ID. It receives the project ID and returns the count."""
+        # count = await self.collection.count_documents(
+        #     {"chunk_project_id": project_id}
+        # )
+        # return count

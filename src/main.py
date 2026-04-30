@@ -23,8 +23,8 @@ async def startup_span():
     )
     # app.db_client = app.mongo_conn[settings.MONGODB_DATABASE]
 
-    lmm_factory = LLMProviderFactory(settings)
-    vectordb_provider_factory = VectorDBProviderFactory(settings)
+    lmm_factory = LLMProviderFactory(config=settings)
+    vectordb_provider_factory = VectorDBProviderFactory(config=settings, db_client=app.db_client)
 
     # generation client
     app.generation_client = lmm_factory.create(provider = settings.GENERATION_BACKEND)
@@ -37,7 +37,7 @@ async def startup_span():
 
     # vectordb client
     app.vectordb_client = vectordb_provider_factory.create(provider = settings.VECTOR_DB_BACKEND)
-    app.vectordb_client.connect()
+    await app.vectordb_client.connect()
 
     # template parser
     app.template_parser = TemplateParser(language=settings.PRIMARY_LANG, default_language=settings.DEFAULT_LANG,)
@@ -46,7 +46,7 @@ async def startup_span():
 async def shutdown_span():
     app.db_engine.dispose()
     # app.mongo_conn.close()
-    app.vectordb_client.disconnect()
+    await app.vectordb_client.disconnect()
 
 app.include_router(base.base_router)
 app.include_router(data.data_router)
