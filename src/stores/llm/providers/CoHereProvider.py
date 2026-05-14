@@ -38,7 +38,7 @@ class CohereProvider(LLMInterface):
     def process_text(self, text: str):
         return text[:self.default_input_max_characters].strip() # truncate the input text to the default max characters and remove leading and trailing whitespace
     
-    def generate_response(self, prompt: str, chat_history: list = [], max_output_tokens: int = None, temperature: float = None):
+    def generate_response(self, prompt: str, chat_history: list = None, max_output_tokens: int = None, temperature: float = None):
         if not self.client:
             self.logger.error("Cohere client is not initialized.")
             return None
@@ -50,6 +50,7 @@ class CohereProvider(LLMInterface):
         max_output_tokens = max_output_tokens if max_output_tokens is not None else self.default_output_max_tokens
         temperature = temperature if temperature is not None else self.default_temperature
 
+        chat_history = chat_history or []
 
         response = self.client.chat(
             model = self.generation_model_id,

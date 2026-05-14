@@ -13,7 +13,7 @@ class LLMInterface(ABC):
         pass
 
     @abstractmethod
-    def generate_response(self, prompt: str,chat_history: list = [], max_output_tokens: int= None, temperature: float = None):
+    def generate_response(self, prompt: str, chat_history: list = None, max_output_tokens: int= None, temperature: float = None):
         """Generate a response based on the provided prompt and any additional parameters. This method should be implemented by the child class to generate a response using the set generation model."""
         pass
 

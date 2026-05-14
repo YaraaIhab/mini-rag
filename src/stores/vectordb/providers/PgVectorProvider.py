@@ -8,6 +8,7 @@ from models.db_schemes import RetrievedDocument
 import logging
 from typing import List
 from sqlalchemy import text as sql_text
+from sqlalchemy.exc import IntegrityError
 import json
 
 class PgVectorProvider(VectorDBInterface):
@@ -34,7 +35,15 @@ class PgVectorProvider(VectorDBInterface):
     async def connect(self):
         async with self.db_client() as session:
             async with session.begin():
-                await session.execute(sql_text("CREATE EXTENSION IF NOT EXISTS vector"))
+                query_extension_sql = sql_text("SELECT extname FROM pg_extension WHERE extname = 'vector'")
+                result = await session.execute(query_extension_sql)
+                extension_exists = result.scalar_one_or_none()
+
+                if not extension_exists:
+                    try:
+                        await session.execute(sql_text("CREATE EXTENSION vector"))
+                    except IntegrityError:
+                        self.logger.warning("Vector extension already exists, ignoring duplicate creation error.")
             await session.commit()
 
     def disconnect(self):
