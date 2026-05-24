@@ -14,7 +14,9 @@ env/*
 !env/.env.postgres-exporter.example
 !env/.env.grafana.example
 !env/.env.app.example
+!env/.env.rabbitmq.example
+!env/.env.redis.example
 
-docker/prometheus_data/
+prometheus_data/
 *.db
 *.wal

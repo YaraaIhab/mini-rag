@@ -1,4 +1,3 @@
-from curses import meta
 import re
 
 from ..VectorDBInterface import VectorDBInterface
