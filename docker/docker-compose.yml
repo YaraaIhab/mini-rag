@@ -1,5 +1,6 @@
 services:
-# FastAPI Application
+
+  # FastAPI Application
   fastapi:
     build:
       context: ..
@@ -18,7 +19,7 @@ services:
     env_file:
       - ./env/.env.app
 
-# Nginx Service
+  # Nginx Service
   nginx:
     image: nginx:stable-alpine3.20-perl
     container_name: nginx
@@ -32,13 +33,12 @@ services:
       - backend
     restart: always
 
-
-# PostgreSQL (pgvector) Service
+  # PostgreSQL (pgvector) Service
   pgvector:
     image: pgvector/pgvector:0.8.2-pg18-trixie
     container_name: pgvector
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - pgvector:/var/lib/postgresql
     env_file:
@@ -53,7 +53,7 @@ services:
       retries: 5
       start_period: 10s
 
-# Qdrant (VectorDB)
+  # Qdrant (VectorDB)
   qdrant:
     image: qdrant/qdrant:v1.17
     container_name: qdrant
@@ -66,7 +66,7 @@ services:
       - backend
     restart: always
 
-# Prometheus Monitoring Service
+  # Prometheus Monitoring Service
   prometheus:
     image: prom/prometheus:v3.11.3
     container_name: prometheus
@@ -78,14 +78,14 @@ services:
     networks:
       - backend
     restart: always
-    command: 
+    command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
       - '--web.console.libraries=/etc/prometheus/console_libraries'
       - '--web.console.templates=/etc/prometheus/consoles'
       - '--web.enable-lifecycle'
 
-# Grafana Dashboard Service
+  # Grafana Dashboard Service
   grafana:
     image: grafana/grafana:13.0-ubuntu
     container_name: grafana
@@ -101,26 +101,26 @@ services:
       - backend
     restart: always
 
-# Node Exporter for System Metrics
+  # Node Exporter for System Metrics
   node-exporter:
     image: prom/node-exporter:v1.11.1
     container_name: node-exporter
     ports:
       - "9100:9100"
     volumes:
-      - /proc:/host/proc:ro # related to the process information in the system (ro means read-only)
-      - /sys:/host/sys:ro # related to system information such as CPU, memory, and network
-      - /:/rootfs:ro # related to the root filesystem information
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
     command:
-      - '--path.procfs=/host/proc' 
-      - '--path.rootfs=/rootfs' 
-      - '--path.sysfs=/host/sys' 
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
       - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
     networks:
       - backend
     restart: always
 
-# Postgres Exporter for Database Metrics
+  # Postgres Exporter for Database Metrics
   postgres-exporter:
     image: prometheuscommunity/postgres-exporter:v0.19.1
     container_name: postgres-exporter
@@ -134,6 +134,52 @@ services:
       - backend
     restart: always
 
+  # RabbitMQ (Message Broker)
+  rabbitmq:
+    image: rabbitmq:4.1.2-management-alpine
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
+    env_file:
+      - ./env/.env.rabbitmq
+    networks:
+      - backend
+    restart: always
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      timeout: 10s
+      retries: 5
+
+  # Redis (Results Backend & Cache)
+  redis:
+    image: redis:8.0.3-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    env_file:
+      - ./env/.env.redis
+    networks:
+      - backend
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      timeout: 10s
+      retries: 5
+    command:
+      [
+        "redis-server",
+        "--appendonly",
+        "yes",
+        "--requirepass",
+        "${REDIS_PASSWORD:-minirag_redis_2222}"
+      ]
+
 networks:
   backend:
     driver: bridge
@@ -144,3 +190,5 @@ volumes:
   qdrant_data:
   prometheus_data:
   grafana_data:
+  rabbitmq_data:
+  redis_data:
