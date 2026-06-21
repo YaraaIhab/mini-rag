@@ -73,24 +73,25 @@ class PgVectorProvider(VectorDBInterface):
     async def get_collection_info(self, collection_name: str)-> dict:
         async with self.db_client() as session:
             async with session.begin():
-                table_info_sql = sql_text(f'SELECT schema_name, table_name, table_owner, tablespace_name, has_indexes FROM pg_tables WHERE tablename = :collection_name')
-                
-                count_sql = sql_text(f"SELECT COUNT(*) FROM {collection_name}")
+                table_info_sql = sql_text(f"SELECT schemaname, tablename, tableowner, tablespace, hasindexes FROM pg_tables WHERE tablename = :collection_name")
 
                 table_info_result = await session.execute(table_info_sql, {"collection_name": collection_name})
-                count_result = await session.execute(count_sql)
-
                 table_info = table_info_result.fetchone() # returns tuple ("", "" ,...)
                 if not table_info:
                     return None
-                
+
+                count_sql = sql_text(
+                    f'SELECT COUNT(*) FROM "{table_info.schemaname}"."{collection_name}"'
+                )
+                count_result = await session.execute(count_sql)
+
                 return {
                     "table_info": {
-                        "schema_name": table_info.schema_name,
-                        "table_name": table_info.table_name,
-                        "table_owner": table_info.table_owner,
-                        "tablespace_name": table_info.tablespace_name,
-                        "has_indexes": table_info.has_indexes
+                        "schema_name": table_info.schemaname,
+                        "table_name": table_info.tablename,
+                        "table_owner": table_info.tableowner,
+                        "tablespace_name": table_info.tablespace,
+                        "has_indexes": table_info.hasindexes
                     },
                     "count": count_result.scalar_one()
                 }
