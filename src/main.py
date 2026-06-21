@@ -49,9 +49,8 @@ async def startup_span():
 
 @app.on_event("shutdown")
 async def shutdown_span():
-    app.db_engine.dispose()
-    # app.mongo_conn.close()
-    await app.vectordb_client.disconnect()
+    await app.db_engine.dispose()
+    app.vectordb_client.disconnect()
 
 app.include_router(base.base_router)
 app.include_router(data.data_router)
