@@ -1,15 +1,17 @@
 from celery import Celery
 from helpers.config import get_settings
+# Defer heavy provider imports to setup_celery to avoid import-time dependency issues
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker
 from stores.llm.LLMProviderFactory import LLMProviderFactory
 from stores.vectordb.VectorDBProviderFactory import VectorDBProviderFactory
 from stores.llm.templates.template_parser import TemplateParser
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
 
 settings = get_settings()
 
 async def setup_celery():
     settings = get_settings()
+
 
     # app.mongo_conn = AsyncIOMotorClient(settings.MONGODB_URI)
     postgres_conn = f"postgresql+asyncpg://{settings.POSTGRES_USERNAME}:{settings.POSTGRES_PASSWORD}@{settings.POSTGRES_HOST}:{settings.POSTGRES_PORT}/{settings.POSTGRES_MAIN_DATABASE}"
@@ -53,8 +55,12 @@ celery_app = Celery(
     "minirag",
     broker=settings.CELERY_BROKER_URL,
     backend=settings.CELERY_RESULT_BACKEND,
-    include=["tasks.mail_service", "tasks.file_processing"] # Include the module where your tasks are defined, so Celery can discover them
-)
+    include=["tasks.mail_service", 
+             "tasks.file_processing",
+             "tasks.data_indexing",
+             "tasks.process_workflow",
+             "tasks.maintenance",]         
+)  # Include the module where your tasks are defined, so Celery can discover them
 
 # Optional: Configure additional Celery settings
 
@@ -74,6 +80,10 @@ celery_app.conf.update(
     result_expires=3600,  # Expire results after 1 hour (adjust as needed)
     
     worker_concurrency=settings.CELERY_WORKER_CONCURRENCY,
+    
+    # enable task events so Flower can inspect and monitor workers
+    worker_send_task_events=True,
+    task_send_sent_event=True,
 
     # Connection settings for better reliability
     broker_connection_retry_on_startup=True,
@@ -84,7 +94,21 @@ celery_app.conf.update(
     task_routes={
         "tasks.mail_service.send_email_report": {"queue": "mail_server_queue"},
         "tasks.file_processing.process_uploaded_file": {"queue": "file_processing_queue"},
-    } # Route the send_email_report task to a specific queue for better organization and scalability
+        "tasks.data_indexing.index_data": {"queue": "data_indexing_queue"},
+        "tasks.process_workflow.process_workflow": {"queue": "process_workflow_queue"},
+        "tasks.maintenance.clean_celery_executions_table": {"queue": "default"},
+    }, # Route the send_email_report task to a specific queue for better organization and scalability
+
+
+beat_schedule={
+    'cleanup-old-task-records': {
+        'task': "tasks.maintenance.clean_celery_executions_table",
+        'schedule': 10,
+        'args': ()
+    }
+},
+
+timezone='UTC',
 
 )
 
