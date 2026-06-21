@@ -19,3 +19,5 @@ class ResponseSignal(Enum):
     VECTORDB_SEARCH_SUCCESS = "Successfully searched in vector db collection"
     RAG_RESPONSE_SUCCESS = "Successfully generated response for RAG question"
     RAG_RESPONSE_ERROR = "Error while generating response for RAG question"
+    DATA_PUSH_TASK_READY = "Data push task has been created and is being processed"
+    PROCESS_AND_PUSH_WORKFLOW_TASK_READY = "Process and push workflow task has been created and is being processed"

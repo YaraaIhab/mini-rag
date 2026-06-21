@@ -1,2 +1,22 @@
 mongodb
 .env
+env/.env
+minirag/alembic.ini
+
+# allow the folder
+!env/
+
+# ignore everything inside env
+env/*
+
+# but keep this specific file
+!env/.env.postgres.example
+!env/.env.postgres-exporter.example
+!env/.env.grafana.example
+!env/.env.app.example
+!env/.env.rabbitmq.example
+!env/.env.redis.example
+
+prometheus_data/
+*.db
+*.wal

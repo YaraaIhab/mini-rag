@@ -2,6 +2,7 @@ from ..LLMInterface import LLMInterface
 from ..LLMEnums import CohereEnum, DocumentTypeEnum
 import cohere
 import logging
+from typing import List, Union
 
 class CohereProvider(LLMInterface):
 
@@ -37,7 +38,7 @@ class CohereProvider(LLMInterface):
     def process_text(self, text: str):
         return text[:self.default_input_max_characters].strip() # truncate the input text to the default max characters and remove leading and trailing whitespace
     
-    def generate_response(self, prompt: str, chat_history: list = [], max_output_tokens: int = None, temperature: float = None):
+    def generate_response(self, prompt: str, chat_history: list = None, max_output_tokens: int = None, temperature: float = None):
         if not self.client:
             self.logger.error("Cohere client is not initialized.")
             return None
@@ -49,6 +50,7 @@ class CohereProvider(LLMInterface):
         max_output_tokens = max_output_tokens if max_output_tokens is not None else self.default_output_max_tokens
         temperature = temperature if temperature is not None else self.default_temperature
 
+        chat_history = chat_history or []
 
         response = self.client.chat(
             model = self.generation_model_id,
@@ -63,10 +65,12 @@ class CohereProvider(LLMInterface):
             return None
         return response.text
     
-    def embed_text(self, input_text, document_type = None):
+    def embed_text(self, input_text: Union[str, List[str]], document_type = None):
         if not self.client:
             self.logger.error("Cohere client is not initialized.")
             return None
+        if isinstance(input_text, str):
+            input_text = [input_text]
         
         if not self.embedding_model_id:
             self.logger.error("Embedding model ID is not set.")
@@ -78,7 +82,7 @@ class CohereProvider(LLMInterface):
         
         response = self.client.embed(
             model = self.embedding_model_id,
-            texts =[self.process_text(input_text)],
+            texts =[self.process_text(text) for text in input_text],
             input_type = input_type,
             embedding_types =['float']
             )
@@ -86,12 +90,11 @@ class CohereProvider(LLMInterface):
             self.logger.error("No embedding received from Cohere API.")
             return None
         
-        embedding = response.embeddings.float[0]
-        return embedding
+        return [embedding for embedding in response.embeddings.float]
 
 
     def construct_prompt(self, prompt: str, role: list):
         return {
             "role": role,
-            "text": self.process_text(prompt)
+            "text": prompt
         }

@@ -1,6 +1,9 @@
 from fastapi import FastAPI, APIRouter, Depends
 import os
 from helpers.config import get_settings, Settings
+from time import sleep
+import logging
+from tasks.mail_service import send_email_report
 
 base_router = APIRouter(
     prefix="/api/v1",
@@ -16,4 +19,13 @@ async def welcome(app_settings: Settings = Depends(get_settings)):
     return {
         "app_name": app_name,
         "app_version": app_version,
+    }
+
+@base_router.get("/send_reports")
+async def send_reports(app_settings: Settings = Depends(get_settings)):
+
+    task = send_email_report.delay(mail_wait_seconds=3) # Call the Celery task and add it to the task queue until it's processed, with a delay of 3 seconds
+    
+    return {"success": True,
+            "task_id": task.id,
     }
